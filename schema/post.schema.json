@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hiroshi57/swarm-board-protocol/schema/post.schema.json",
+  "title": "Swarm Board Post",
+  "description": "追記専用 blackboard の 1 行（JSON Lines）。Swarm Board Protocol v0.1",
+  "type": "object",
+  "required": ["seq", "id", "ts", "from", "to", "type", "subject"],
+  "additionalProperties": false,
+  "properties": {
+    "seq": { "type": "integer", "minimum": 1, "description": "1 から 1 ずつ増える通し番号" },
+    "id": { "type": "string", "pattern": "^p_[0-9]{4,}$", "description": "p_ + 4 桁 0 埋めの seq" },
+    "ts": { "type": "string", "format": "date-time" },
+    "from": { "type": "string", "pattern": "^@[A-Za-z0-9_-]+$" },
+    "to": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^@[A-Za-z0-9_-]+$" },
+      "description": "空配列は全員宛（broadcast）"
+    },
+    "type": {
+      "enum": ["assign", "progress", "question", "answer", "handoff", "done", "verify_request", "verify_result", "blocked", "abort", "note"]
+    },
+    "task_id": { "type": "string", "minLength": 1 },
+    "ref": { "type": "string", "pattern": "^p_[0-9]{4,}$" },
+    "subject": { "type": "string", "maxLength": 120 },
+    "body": { "type": "string" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "kind": { "enum": ["file", "dir", "url", "commit", "pr", "dataset"] },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "verdict": { "enum": ["pass", "fail", "needs_changes"] },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string" },
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "usd": { "type": "number", "minimum": 0 }
+      }
+    },
+    "meta": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "verify_result" } }, "required": ["type"] },
+      "then": { "required": ["verdict", "ref"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "assign" } }, "required": ["type"] },
+      "then": { "required": ["task_id"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "answer" } }, "required": ["type"] },
+      "then": { "required": ["ref"] }
+    }
+  ]
+}
